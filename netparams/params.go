@@ -21,7 +21,7 @@ type Params struct {
 // hcashd on the main network (wire.MainNet).
 var MainNetParams = Params{
 	Params:            &chaincfg.MainNetParams,
-	JSONRPCClientPort: "14009",
+	JSONRPCClientPort: "12010",
 	JSONRPCServerPort: "14010",
 	GRPCServerPort:    "14011",
 }
