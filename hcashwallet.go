@@ -123,10 +123,24 @@ func walletMain() error {
 				break
 			}
 		}
-
+		fmt.Println(cfg.Pass)
+		if cfg.Pass == "" {
+			os.Stdout.Sync()
+			for {
+				reader := bufio.NewReader(os.Stdin)
+				passphrase, err = prompt.PassPrompt(reader, "Enter priv wallet passphrase", false)
+				if err != nil {
+					fmt.Println("Failed to input password. Please try again.")
+					continue
+				}
+				break
+			}
+		} else {
+			passphrase = []byte(cfg.Pass)
+		}
 		// Load the wallet database.  It must have been created already
 		// or this will return an appropriate error.
-		w, err := loader.OpenExistingWallet(walletPass)
+		w, err := loader.OpenExistingWallet(walletPass, passphrase)
 		if err != nil {
 			log.Errorf("Open failed: %v", err)
 			return err
@@ -141,20 +155,20 @@ func walletMain() error {
 		//
 		// Until then, since --noinitialload users are expecting to use
 		// the wallet only over RPC, disable this feature for them.
-		if !cfg.NoInitialLoad {
-			if cfg.Pass != "" {
-				passphrase = []byte(cfg.Pass)
-				w.SetInitiallyUnlocked(true)
-				var unlockAfter <-chan time.Time
-				err = w.Unlock(passphrase, unlockAfter)
-				if err != nil {
-					log.Errorf("Incorrect passphrase in pass config setting.")
-					return err
-				}
-			} else {
-				passphrase = startPromptPass(w)
-			}
-		}
+		//if !cfg.NoInitialLoad {
+			//if cfg.Pass != "" {
+			//	passphrase = []byte(cfg.Pass)
+			w.SetInitiallyUnlocked(true)
+			//	var unlockAfter <-chan time.Time
+			//	err = w.Unlock(passphrase, unlockAfter)
+			//	if err != nil {
+			//		log.Errorf("Incorrect passphrase in pass config setting.")
+			//		return err
+			//	}
+			//} else {
+			//	passphrase = startPromptPass(w)
+			//}
+		//}
 	}
 
 	// Create and start HTTP server to serve wallet client connections.
@@ -362,7 +376,7 @@ func rpcClientConnectLoop(passphrase []byte, legacyRPCServer *legacyrpc.Server, 
 			// does not require stopping and restarting everything.
 			loadedWallet.Stop()
 			loadedWallet.WaitForShutdown()
-			loadedWallet.Start()
+			loadedWallet.ReconnectStart()
 		}
 	}
 }
@@ -393,7 +407,7 @@ func readCAFile() []byte {
 func startChainRPC(certs []byte) (*chain.RPCClient, error) {
 	log.Infof("Attempting RPC client connection to %v", cfg.RPCConnect)
 	rpcc, err := chain.NewRPCClient(activeNet.Params, cfg.RPCConnect,
-		cfg.DcrdUsername, cfg.DcrdPassword, certs, cfg.DisableClientTLS, 0)
+		cfg.HcashdUsername, cfg.HcashdPassword, certs, cfg.DisableClientTLS, 0)
 	if err != nil {
 		return nil, err
 	}
